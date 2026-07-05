@@ -270,8 +270,8 @@ GET /addresses/all?limit=10&offset=0
 
 ### Prerequisites
 
-- Node.js 18+
-- pnpm (recommended) or npm
+- Node.js 24+
+- pnpm
 
 ### Install dependencies
 
@@ -280,7 +280,7 @@ GET /addresses/all?limit=10&offset=0
 git clone https://github.com/defuse-protocol/pda-reference-service.git
 cd pda-reference-service
 
-# Install backend dependencies
+# Install all dependencies (backend + UI)
 pnpm install
 ```
 
@@ -301,10 +301,18 @@ cp .env.example .env
 ### Run the service
 
 ```bash
+# Run API only
 pnpm start
+
+# Run UI only
+pnpm ui
+
+# Run both API and UI together
+pnpm dev
 ```
 
-The API will be available at `http://localhost:3100`.
+- API: `http://localhost:3100`
+- UI: `http://localhost:3101`
 
 ### Test address creation
 
@@ -513,26 +521,24 @@ The service includes a React dashboard for visualizing addresses and monitoring 
 
 ### Setup
 
-**1. Start the backend service** (if not already running):
-
 ```bash
-# From the project root
+# Install all dependencies
 pnpm install
-pnpm start
+
+# Run both API and UI
+pnpm dev
 ```
 
-The API runs on `http://localhost:3100`.
+This starts:
+- API on `http://localhost:3100`
+- UI on `http://localhost:3101`
 
-**2. Start the UI** (in a separate terminal):
+Or run them separately:
 
 ```bash
-# From the project root
-cd ui
-npm install
-npm run dev
+pnpm start  # API only
+pnpm ui     # UI only
 ```
-
-The dashboard runs on `http://localhost:3101`.
 
 **3. Open the dashboard:**
 
@@ -573,15 +579,3 @@ server: {
   },
 }
 ```
-
-If your backend runs on a different port, update the `target` value.
-
----
-
-## License
-
-MIT
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
