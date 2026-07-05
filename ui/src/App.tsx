@@ -107,8 +107,8 @@ export default function App() {
       <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">PDA Test Service</h1>
-            <p className="text-gray-400 text-sm">Persistent Deposit Address Dashboard</p>
+            <h1 className="text-2xl font-bold">RDA Test Service</h1>
+            <p className="text-gray-400 text-sm">Reusable Deposit Address Dashboard</p>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-sm text-gray-400">Last update: {lastUpdate.toLocaleTimeString()}</div>

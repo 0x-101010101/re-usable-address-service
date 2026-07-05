@@ -22,7 +22,7 @@ export class AppFeeDto {
 }
 
 /**
- * DTO for creating a persistent deposit address.
+ * DTO for creating a Reusable deposit address.
  *
  * This mirrors what an external partner would send to their own wrapper API.
  * The wrapper then calls One Click with additional fields.

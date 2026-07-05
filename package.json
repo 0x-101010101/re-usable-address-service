@@ -1,7 +1,7 @@
 {
-  "name": "pda-reference-service",
+  "name": "reusable-reference-service",
   "version": "1.0.0",
-  "description": "Reference implementation for building Persistent Deposit Addresses with One Click API",
+  "description": "Reference implementation for building Reusable Deposit Addresses with One Click API",
   "author": "Defuse Labs",
   "license": "MIT",
   "scripts": {

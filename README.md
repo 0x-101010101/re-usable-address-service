@@ -1,4 +1,4 @@
-# Persistent Deposit Address Service Guide
+# Reusable Deposit Address Service Guide
 
 
  This repository serves as a **guide** for building a re-usable deposit addresses service wrapper aroubd One Click API's ANY_INPUT mechanism. This service is to be used as an intro into the architecture to understand the architecture, so that it can be adapted it for your production environment.
@@ -242,8 +242,8 @@ Content-Type: application/json
 {
   "userId": "user-123",
   "depositChain": "btc",
-  "destinationChain": "base",
-  "destinationAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+  "destinationChain": "eth",
+  "destinationAsset": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
   "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12"
 }
 ```
@@ -320,8 +320,8 @@ curl -X POST http://localhost:3100/address \
   -d '{
     "userId": "test-user-1",
     "depositChain": "btc",
-    "destinationChain": "base",
-    "destinationAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+    "destinationChain": "eth",
+    "destinationAsset": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
     "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12"
   }'
 ```
@@ -365,16 +365,16 @@ Once the service is running, follow these steps to test the complete deposit lif
 
 ### Step 1: Create a deposit address
 
-Generate a new address for receiving ETH deposits and converting to USDC on Base:
+Generate a new address for receiving BTC deposits and converting to USDC on Ethereum:
 
 ```bash
 curl -X POST http://localhost:3100/address \
   -H "Content-Type: application/json" \
   -d '{
     "userId": "demo-user-1",
-    "depositChain": "eth",
-    "destinationChain": "base",
-    "destinationAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+    "depositChain": "btc",
+    "destinationChain": "eth",
+    "destinationAsset": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
     "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12"
   }'
 ```
@@ -385,11 +385,11 @@ Response:
 {
   "id": 1,
   "userId": "demo-user-1",
-  "depositChain": "evm",
-  "destinationChain": "base",
-  "destinationAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+  "depositChain": "btc",
+  "destinationChain": "eth",
+  "destinationAsset": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
   "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12",
-  "depositAddress": "0x1a2b3c4d5e6f7890abcdef1234567890abcdef12",
+  "depositAddress": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
   "accountId": "abc123def456789...",
   "alreadyExists": false,
   "chainDepositAddresses": {
@@ -403,17 +403,17 @@ Response:
 }
 ```
 
-Note the `depositAddress` — this is what you show to the user. Since we requested `eth`, we get an EVM address that works on Ethereum, Arbitrum, Base, and all other EVM chains.
+Note the `depositAddress` — this is what you show to the user. Since we requested `btc`, this response returns a Bitcoin deposit address.
 
 ### Step 2: Make a deposit
 
-Send funds to the deposit address on any supported chain. For EVM chains:
+Send funds to the deposit address on the Bitcoin network:
 
-1. Open your wallet (MetaMask, etc.)
-2. Send ETH, USDT, USDC, or any supported token to the `depositAddress`
-3. Use any EVM network (Ethereum, Arbitrum, Base, etc.) — they all share the same address
+1. Open a BTC wallet or exchange withdrawal flow
+2. Send BTC to the `depositAddress`
+3. Use Bitcoin mainnet and wait for confirmations
 
-For testing with small amounts, Arbitrum or Base have lower gas fees.
+For testing, use a small BTC amount and account for BTC confirmation time.
 
 > **Note:** After sending, the deposit will be detected by the POA Bridge within a few minutes (depending on block confirmations). One Click will automatically swap to USDC and send to your recipient address.
 
@@ -439,10 +439,10 @@ Response while processing:
   "deposits": [
     {
       "status": "PROCESSING",
-      "depositTxHash": "0xabc123...",
-      "chain": "eth",
-      "amountIn": "100000000000000000",
-      "amountInFormatted": "0.1",
+      "depositTxHash": "b7f8f2c7a31dd6d919f2e2a5f0f8c1a6d0cf91b57f2a0a5b2a1e35d7f9c4b218",
+      "chain": "btc",
+      "amountIn": "1000000",
+      "amountInFormatted": "0.01",
       "detectedAt": "2026-07-05T15:05:00.000Z"
     }
   ],
@@ -464,11 +464,11 @@ Response after completion:
   "deposits": [
     {
       "status": "SUCCESS",
-      "depositTxHash": "0xabc123...",
+      "depositTxHash": "b7f8f2c7a31dd6d919f2e2a5f0f8c1a6d0cf91b57f2a0a5b2a1e35d7f9c4b218",
       "withdrawTxHash": "0xdef456...",
-      "chain": "eth",
-      "amountIn": "100000000000000000",
-      "amountInFormatted": "0.1",
+      "chain": "btc",
+      "amountIn": "1000000",
+      "amountInFormatted": "0.01",
       "amountOut": "250000000",
       "amountOutUsd": "250.00",
       "detectedAt": "2026-07-05T15:05:00.000Z",
