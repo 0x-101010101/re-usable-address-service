@@ -23,6 +23,7 @@ export const EVM_CHAINS = ['eth', 'base', 'arb', 'gnosis', 'bsc', 'pol', 'avax',
 export const SUPPORTED_DEPOSIT_CHAINS = [...EVM_CHAINS, 'btc', 'sol', 'ton', 'tron', 'sui', 'stellar', 'aptos', 'near'];
 
 export type ChainAddressItem = { blockchain: string; address: string; memo?: string };
+const EVM_ADDRESS_PREFIX = '0x';
 
 export function resolvePoaChain(chain: string) {
   return POA_CHAIN_FORMAT[chain] ?? chain;
@@ -85,6 +86,9 @@ export function buildAnyInputQuotePayload(
   defaultSlippage: number,
   deadlineYears: number,
 ) {
+  const normalizedRecipient = normalizeAddress(request.recipient);
+  const normalizedRefundTo = normalizeAddress(request.refundTo ?? request.recipient);
+
   return {
     dry: false,
     depositMode: 'SIMPLE',
@@ -92,9 +96,9 @@ export function buildAnyInputQuotePayload(
     originAsset: '1cs_v1:any',
     depositType: 'INTENTS',
     destinationAsset: request.destinationAsset,
-    recipient: request.recipient,
+    recipient: normalizedRecipient,
     recipientType: request.recipientType,
-    refundTo: request.refundTo ?? request.recipient,
+    refundTo: normalizedRefundTo,
     refundType: request.refundType ?? 'INTENTS',
     deadline: getQuoteDeadlineIso(deadlineYears),
     slippageTolerance: request.slippageTolerance ?? defaultSlippage,
@@ -102,6 +106,15 @@ export function buildAnyInputQuotePayload(
     confidentiality: 'public',
     appFees: request.appFees ?? [],
   };
+}
+
+function normalizeAddress(value: string) {
+  const normalizedValue = value.trim();
+  if (normalizedValue.toLowerCase().startsWith(EVM_ADDRESS_PREFIX)) {
+    return normalizedValue.toLowerCase();
+  }
+
+  return normalizedValue;
 }
 
 export function isMissingWithdrawalsError(error: unknown) {
@@ -142,4 +155,13 @@ export function getErrorMessage(error: unknown) {
 
   const message = (error as { message?: string }).message;
   return message ?? 'Unknown error';
+}
+
+export function getErrorStatus(error: unknown) {
+  if (typeof error !== 'object' || error === null || !('response' in error)) {
+    return undefined;
+  }
+
+  const status = (error as { response?: { status?: number } }).response?.status;
+  return typeof status === 'number' ? status : undefined;
 }

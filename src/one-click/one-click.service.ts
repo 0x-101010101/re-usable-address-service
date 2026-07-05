@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
@@ -15,6 +15,7 @@ import {
   getApiKeyHeaders,
   getChainsToQuery,
   getErrorMessage,
+  getErrorStatus,
   getJsonHeaders,
   isMissingWithdrawalsError,
   normalizeChainAddresses,
@@ -59,7 +60,9 @@ export class OneClickService {
       return quote;
     } catch (error) {
       const message = getErrorMessage(error);
-      throw new Error(`One Click API error: ${message}`);
+      const status = getErrorStatus(error) ?? 502;
+      this.logger.error(`One Click API error: ${message}`);
+      throw new HttpException(`One Click API error: ${message}`, status);
     }
   }
 

@@ -243,7 +243,7 @@ Content-Type: application/json
   "userId": "user-123",
   "depositChain": "btc",
   "destinationChain": "base",
-  "destinationAsset": "nep141:base-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+  "destinationAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
   "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12"
 }
 ```
@@ -321,7 +321,7 @@ curl -X POST http://localhost:3100/address \
     "userId": "test-user-1",
     "depositChain": "btc",
     "destinationChain": "base",
-    "destinationAsset": "nep141:base-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+    "destinationAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
     "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12"
   }'
 ```
@@ -374,7 +374,7 @@ curl -X POST http://localhost:3100/address \
     "userId": "demo-user-1",
     "depositChain": "eth",
     "destinationChain": "base",
-    "destinationAsset": "nep141:base-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+    "destinationAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
     "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12"
   }'
 ```
@@ -387,7 +387,7 @@ Response:
   "userId": "demo-user-1",
   "depositChain": "evm",
   "destinationChain": "base",
-  "destinationAsset": "nep141:base-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+  "destinationAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
   "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12",
   "depositAddress": "0x1a2b3c4d5e6f7890abcdef1234567890abcdef12",
   "accountId": "abc123def456789...",
