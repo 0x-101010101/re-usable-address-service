@@ -242,8 +242,8 @@ Content-Type: application/json
 {
   "userId": "user-123",
   "depositChain": "eth",
-  "destinationChain": "arb",
-  "destinationAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+  "destinationChain": "base",
+  "destinationAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
   "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12"
 }
 ```
@@ -290,8 +290,8 @@ curl -X POST http://localhost:3100/address \
   -d '{
     "userId": "test-user-1",
     "depositChain": "eth",
-    "destinationChain": "arb",
-    "destinationAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+    "destinationChain": "base",
+    "destinationAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
     "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12"
   }'
 ```
@@ -308,8 +308,9 @@ The reference implementation uses SQLite for simplicity. For production:
 - **Monitor cache hit rate** — should be >90% for reusable addresses
 - **Set up alerting** for stuck deposits or API errors
 - **Run a chain indexer** for watched deposit addresses so you can show "pending detection" before One Click/bridge polling picks up deposits
+- **Consider a deterministic request hash key** — for larger scale, hashing normalized route params (e.g. `userId + depositChain + destinationAsset + recipient`) into a single indexed key can make cache mapping stricter and easier to audit across services
 
-For BTC routes specifically, status may remain empty until the deposit has at least one BTC confirmation and is detected on the bridge/Arbitrum flow.
+For BTC routes specifically, status may remain empty until the deposit has at least one BTC confirmation and is detected by the bridge flow.
 
 The unique constraint handles concurrent requests for the same address but For high-traffic scenarios, consider adding a distributed lock (Redis) before the One Click call.
 
@@ -321,7 +322,7 @@ Once the service is running, follow these steps to test the complete deposit lif
 
 ### Step 1: Create a deposit address
 
-Generate a new address for receiving ETH deposits and converting to USDC on Arbitrum:
+Generate a new address for receiving ETH deposits and converting to USDC on Base:
 
 ```bash
 curl -X POST http://localhost:3100/address \
@@ -329,8 +330,8 @@ curl -X POST http://localhost:3100/address \
   -d '{
     "userId": "demo-user-1",
     "depositChain": "eth",
-    "destinationChain": "arb",
-    "destinationAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+    "destinationChain": "base",
+    "destinationAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
     "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12"
   }'
 ```
@@ -342,8 +343,8 @@ Response:
   "id": 1,
   "userId": "demo-user-1",
   "depositChain": "evm",
-  "destinationChain": "arb",
-  "destinationAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+  "destinationChain": "base",
+  "destinationAsset": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
   "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12",
   "depositAddress": "0x1a2b3c4d5e6f7890abcdef1234567890abcdef12",
   "accountId": "abc123def456789...",
@@ -370,7 +371,7 @@ Send funds to the deposit address on an EVM network:
 2. Send ETH, USDC, or another supported token to the `depositAddress`
 3. Use Ethereum mainnet (or another supported EVM chain)
 
-For testing, use a small amount of ETH on Arbitrum for lower gas costs.
+For testing, use a small amount of ETH on Base for lower gas costs.
 
 > **Note:** After sending, the deposit will be detected by the POA Bridge within a few minutes (depending on block confirmations). One Click will automatically swap to USDC and send to your recipient address.
 

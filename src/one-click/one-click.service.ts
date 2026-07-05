@@ -112,7 +112,7 @@ export class OneClickService {
 
   private normalizeQuoteResponse(raw: any): OneClickQuoteResponse {
     const chainDepositAddresses = normalizeChainAddresses(raw.quote?.chainDepositAddresses);
-    const accountId = raw.accountId ?? chainDepositAddresses.near ?? '';
+    const accountId = raw.accountId ?? raw.quote?.depositAddress ?? chainDepositAddresses.near ?? '';
     if (!accountId) {
       throw new Error('Missing accountId in response');
     }

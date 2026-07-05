@@ -101,7 +101,7 @@ export class AddressService {
   ) {
     const chainDepositAddresses = quote.quote.chainDepositAddresses;
     if (normalizedDepositChain === 'near') {
-      return quote.accountId;
+      return chainDepositAddresses.near ?? quote.accountId;
     }
     if (normalizedDepositChain === 'evm') {
       return chainDepositAddresses.eth ?? chainDepositAddresses.arb ?? chainDepositAddresses.base ?? quote.quote.depositAddress;
