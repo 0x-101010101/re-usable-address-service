@@ -241,9 +241,9 @@ Content-Type: application/json
 
 {
   "userId": "user-123",
-  "depositChain": "btc",
-  "destinationChain": "eth",
-  "destinationAsset": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+  "depositChain": "eth",
+  "destinationChain": "arb",
+  "destinationAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
   "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12"
 }
 ```
@@ -289,9 +289,9 @@ curl -X POST http://localhost:3100/address \
   -H "Content-Type: application/json" \
   -d '{
     "userId": "test-user-1",
-    "depositChain": "btc",
-    "destinationChain": "eth",
-    "destinationAsset": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+    "depositChain": "eth",
+    "destinationChain": "arb",
+    "destinationAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
     "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12"
   }'
 ```
@@ -307,6 +307,9 @@ The reference implementation uses SQLite for simplicity. For production:
 - **Add rate limiting** to prevent abuse
 - **Monitor cache hit rate** — should be >90% for reusable addresses
 - **Set up alerting** for stuck deposits or API errors
+- **Run a chain indexer** for watched deposit addresses so you can show "pending detection" before One Click/bridge polling picks up deposits
+
+For BTC routes specifically, status may remain empty until the deposit has at least one BTC confirmation and is detected on the bridge/Arbitrum flow.
 
 The unique constraint handles concurrent requests for the same address but For high-traffic scenarios, consider adding a distributed lock (Redis) before the One Click call.
 
@@ -318,16 +321,16 @@ Once the service is running, follow these steps to test the complete deposit lif
 
 ### Step 1: Create a deposit address
 
-Generate a new address for receiving BTC deposits and converting to USDC on Ethereum:
+Generate a new address for receiving ETH deposits and converting to USDC on Arbitrum:
 
 ```bash
 curl -X POST http://localhost:3100/address \
   -H "Content-Type: application/json" \
   -d '{
     "userId": "demo-user-1",
-    "depositChain": "btc",
-    "destinationChain": "eth",
-    "destinationAsset": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+    "depositChain": "eth",
+    "destinationChain": "arb",
+    "destinationAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
     "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12"
   }'
 ```
@@ -338,11 +341,11 @@ Response:
 {
   "id": 1,
   "userId": "demo-user-1",
-  "depositChain": "btc",
-  "destinationChain": "eth",
-  "destinationAsset": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+  "depositChain": "evm",
+  "destinationChain": "arb",
+  "destinationAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
   "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12",
-  "depositAddress": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+  "depositAddress": "0x1a2b3c4d5e6f7890abcdef1234567890abcdef12",
   "accountId": "abc123def456789...",
   "alreadyExists": false,
   "chainDepositAddresses": {
@@ -356,17 +359,18 @@ Response:
 }
 ```
 
-Note the `depositAddress` — this is what you show to the user. Since we requested `btc`, this response returns a Bitcoin deposit address.
+Note the `depositAddress` — this is what you show to the user. Since we requested `eth`, this is an EVM address and can be used from Ethereum or other EVM chains.
+The returned `depositChain` is `evm` because the service normalizes all EVM inputs (`eth`, `arb`, `base`, etc.) to a shared cache key.
 
 ### Step 2: Make a deposit
 
-Send funds to the deposit address on the Bitcoin network:
+Send funds to the deposit address on an EVM network:
 
-1. Open a BTC wallet or exchange withdrawal flow
-2. Send BTC to the `depositAddress`
-3. Use Bitcoin mainnet and wait for confirmations
+1. Open your wallet (MetaMask, Rabby, etc.)
+2. Send ETH, USDC, or another supported token to the `depositAddress`
+3. Use Ethereum mainnet (or another supported EVM chain)
 
-For testing, use a small BTC amount and account for BTC confirmation time.
+For testing, use a small amount of ETH on Arbitrum for lower gas costs.
 
 > **Note:** After sending, the deposit will be detected by the POA Bridge within a few minutes (depending on block confirmations). One Click will automatically swap to USDC and send to your recipient address.
 
@@ -392,10 +396,10 @@ Response while processing:
   "deposits": [
     {
       "status": "PROCESSING",
-      "depositTxHash": "b7f8f2c7a31dd6d919f2e2a5f0f8c1a6d0cf91b57f2a0a5b2a1e35d7f9c4b218",
-      "chain": "btc",
-      "amountIn": "1000000",
-      "amountInFormatted": "0.01",
+      "depositTxHash": "0xabc123...",
+      "chain": "eth",
+      "amountIn": "100000000000000000",
+      "amountInFormatted": "0.1",
       "detectedAt": "2026-07-05T15:05:00.000Z"
     }
   ],
@@ -417,11 +421,11 @@ Response after completion:
   "deposits": [
     {
       "status": "SUCCESS",
-      "depositTxHash": "b7f8f2c7a31dd6d919f2e2a5f0f8c1a6d0cf91b57f2a0a5b2a1e35d7f9c4b218",
+      "depositTxHash": "0xabc123...",
       "withdrawTxHash": "0xdef456...",
-      "chain": "btc",
-      "amountIn": "1000000",
-      "amountInFormatted": "0.01",
+      "chain": "eth",
+      "amountIn": "100000000000000000",
+      "amountInFormatted": "0.1",
       "amountOut": "250000000",
       "amountOutUsd": "250.00",
       "detectedAt": "2026-07-05T15:05:00.000Z",
