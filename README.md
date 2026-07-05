@@ -257,46 +257,16 @@ The `alreadyExists` field indicates whether this was a cache hit (`true`) or a n
 GET /address/<USERID>/unified-status
 ```
 
-
-### List all addresses
-
-```bash
-GET /addresses/all?limit=10&offset=0
-```
-
 ---
 
 ## Quick Start
 
-### Prerequisites
-
-- Node.js 24+
-- pnpm
-
-### Install dependencies
-
-```bash
-# Clone the repository
-git clone https://github.com/defuse-protocol/pda-reference-service.git
-cd pda-reference-service
-
-# Install all dependencies (backend + UI)
-pnpm install
-```
-
-### Configure environment
+clone this repository and run `pnpm install` that is all that needs to be done in terms of setup. Note you will need to include your partnerID and API key in your env file for correct authentication to the 1clcik api
 
 ```bash
 cp .env.example .env
 # Edit .env with your settings
 ```
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `PORT` | 3100 | Server port |
-| `ONE_CLICK_API_URL` | Production URL | One Click API endpoint |
-| `DATABASE_PATH` | ./pda.sqlite | SQLite database file |
-| `DEFAULT_SLIPPAGE_TOLERANCE` | 100 | Slippage in basis points (1%) |
 
 ### Run the service
 
@@ -338,24 +308,7 @@ The reference implementation uses SQLite for simplicity. For production:
 - **Monitor cache hit rate** — should be >90% for reusable addresses
 - **Set up alerting** for stuck deposits or API errors
 
-### Handling race conditions
-
-The unique constraint handles concurrent requests for the same address:
-
-```typescript
-try {
-  const quote = await this.oneClickService.createAnyInputQuote(request);
-  return await this.saveAddress(request, quote);
-} catch (error) {
-  if (this.isUniqueViolation(error)) {
-    // Another request won the race — return their result
-    return await this.repo.findOne({ where: whereClause });
-  }
-  throw error;
-}
-```
-
-For high-traffic scenarios, consider adding a distributed lock (Redis) before the One Click call.
+The unique constraint handles concurrent requests for the same address but For high-traffic scenarios, consider adding a distributed lock (Redis) before the One Click call.
 
 ---
 
