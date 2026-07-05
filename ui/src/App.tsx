@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AddressTable } from './components/AddressTable';
-import { CreateAddressForm } from './components/CreateAddressForm';
 import { WithdrawalsPanel } from './components/WithdrawalsPanel';
 
 export interface Address {
@@ -92,10 +91,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, [pollInterval, refreshAll]);
 
-  const handleAddressCreated = (addr: Address) => {
-    setAddresses((prev) => [addr, ...prev]);
-  };
-
   const getStatusSummary = (addressId: number) => {
     const deps = deposits[addressId] || [];
     return {
@@ -144,7 +139,7 @@ export default function App() {
               {loading ? (
                 <div className="p-8 text-center text-gray-400">Loading...</div>
               ) : addresses.length === 0 ? (
-                <div className="p-8 text-center text-gray-400">No addresses yet. Create one using the form.</div>
+                <div className="p-8 text-center text-gray-400">No addresses found yet.</div>
               ) : (
                 <AddressTable
                   addresses={addresses}
@@ -158,15 +153,18 @@ export default function App() {
           </div>
 
           <div className="space-y-6">
-            <CreateAddressForm onCreated={handleAddressCreated} />
-
-            {selectedAddress && (
+            {selectedAddress ? (
               <WithdrawalsPanel
                 address={selectedAddress}
                 deposits={deposits[selectedAddress.id] || []}
                 notes={statusNotes[selectedAddress.id] || []}
                 onRefresh={() => fetchStatus(selectedAddress.id)}
               />
+            ) : (
+              <div className="bg-gray-800 rounded-lg border border-gray-700 p-4 text-sm text-gray-400">
+                Select an address row and click <span className="text-gray-200">Show Pending</span> or{' '}
+                <span className="text-gray-200">Show Transactions</span> to view deposit activity.
+              </div>
             )}
           </div>
         </div>

@@ -47,6 +47,7 @@ export function AddressTable({ addresses, selectedAddress, onSelect, getStatusSu
             <th className="px-4 py-3">Deposit Address</th>
             <th className="px-4 py-3">Status</th>
             <th className="px-4 py-3">Deposits</th>
+            <th className="px-4 py-3 text-right">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-700">
@@ -58,8 +59,7 @@ export function AddressTable({ addresses, selectedAddress, onSelect, getStatusSu
             return (
               <tr
                 key={addr.id}
-                onClick={() => onSelect(addr)}
-                className={`cursor-pointer transition-colors ${
+                className={`transition-colors ${
                   isSelected ? 'bg-blue-900/30' : hasActive ? 'bg-yellow-900/20 hover:bg-yellow-900/30' : 'hover:bg-gray-750'
                 }`}
               >
@@ -105,6 +105,18 @@ export function AddressTable({ addresses, selectedAddress, onSelect, getStatusSu
                   {addr.lastDepositAt && (
                     <div className="text-xs text-gray-500">{new Date(addr.lastDepositAt).toLocaleDateString()}</div>
                   )}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelect(addr);
+                      onFetchStatus(addr.id);
+                    }}
+                    className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500"
+                  >
+                    {hasActive ? 'Show Pending' : 'Show Transactions'}
+                  </button>
                 </td>
               </tr>
             );

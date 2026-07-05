@@ -117,9 +117,27 @@ export function getErrorMessage(error: unknown) {
     return String(error);
   }
 
-  const dataErrorMessage = (error as { response?: { data?: { errorMessage?: string } } }).response?.data?.errorMessage;
-  if (dataErrorMessage) {
-    return dataErrorMessage;
+  const responseData = (error as { response?: { data?: unknown } }).response?.data;
+  if (typeof responseData === 'string' && responseData.trim().length > 0) {
+    return responseData;
+  }
+
+  if (typeof responseData === 'object' && responseData !== null) {
+    const objectData = responseData as Record<string, unknown>;
+    const errorMessage =
+      (typeof objectData.errorMessage === 'string' && objectData.errorMessage) ||
+      (typeof objectData.message === 'string' && objectData.message) ||
+      (typeof objectData.error === 'string' && objectData.error);
+
+    if (errorMessage) {
+      return errorMessage;
+    }
+
+    try {
+      return JSON.stringify(responseData);
+    } catch {
+      // Fall through to generic message.
+    }
   }
 
   const message = (error as { message?: string }).message;

@@ -9,7 +9,6 @@
     "start": "NODE_ENV=development nest start --watch",
     "start:prod": "nest build && node dist/main",
     "ui": "pnpm --filter pda-reference-ui dev",
-    "dev": "concurrently \"pnpm start\" \"pnpm ui\"",
     "install:all": "pnpm install"
   },
   "dependencies": {
@@ -31,9 +30,6 @@
     "@nestjs/cli": "^10.4.2",
     "@types/better-sqlite3": "^7.6.10",
     "@types/node": "^22.0.0",
-    "concurrently": "^8.2.2",
-    "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.5.3"
   },
   "engines": {

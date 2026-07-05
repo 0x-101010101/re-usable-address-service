@@ -301,14 +301,12 @@ cp .env.example .env
 ### Run the service
 
 ```bash
-# Run API only
+# Run in two terminals:
+# Terminal 1 (API)
 pnpm start
-
-# Run UI only
+#
+# Terminal 2 (UI)
 pnpm ui
-
-# Run both API and UI together
-pnpm dev
 ```
 
 - API: `http://localhost:3100`
@@ -487,37 +485,11 @@ Response after completion:
 }
 ```
 
-### Step 4: Verify idempotency
-
-Request the same address again — it should return from cache:
-
-```bash
-curl -X POST http://localhost:3100/address \
-  -H "Content-Type: application/json" \
-  -d '{
-    "userId": "demo-user-1",
-    "depositChain": "arb",
-    "destinationChain": "base",
-    "destinationAsset": "nep141:base-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
-    "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12"
-  }'
-```
-
-Note we changed `depositChain` from `eth` to `arb`, but since both normalize to `evm`, you'll get the same address with `"alreadyExists": true`.
-
 ---
 
 ## Dashboard UI
 
 The service includes a React dashboard for visualizing addresses and monitoring deposit statuses in real-time.
-
-### Features
-
-- **Address list** — view all created addresses with their routes and deposit counts
-- **Status badges** — color-coded indicators for DETECTED (yellow), PROCESSING (orange), SUCCESS (green), FAILED (red)
-- **Auto-polling** — configurable refresh interval (2s, 5s, 10s, 30s)
-- **Create address form** — quick form with presets for common routes
-- **Deposit details** — click any address to see its deposit history and transaction hashes
 
 ### Setup
 
@@ -525,57 +497,18 @@ The service includes a React dashboard for visualizing addresses and monitoring 
 # Install all dependencies
 pnpm install
 
-# Run both API and UI
-pnpm dev
+# Run in two terminals:
+# Terminal 1 (API)
+pnpm start
+#
+# Terminal 2 (UI)
+pnpm ui
 ```
 
 This starts:
 - API on `http://localhost:3100`
 - UI on `http://localhost:3101`
 
-Or run them separately:
-
-```bash
-pnpm start  # API only
-pnpm ui     # UI only
-```
-
 **3. Open the dashboard:**
 
 Navigate to [http://localhost:3101](http://localhost:3101) in your browser.
-
-### Using the Dashboard
-
-**Create an address:**
-1. Fill in the form on the right side
-2. Select deposit chain, destination chain, and asset
-3. Enter your recipient address
-4. Click "Create Address"
-
-**Monitor deposits:**
-1. Created addresses appear in the table
-2. Click an address row to see its deposit details
-3. Status updates automatically based on poll interval
-4. Use the dropdown to adjust polling frequency
-
-**View deposit history:**
-1. Select an address from the table
-2. The right panel shows all deposits for that address
-3. Each deposit shows: status, amounts, transaction hashes, timestamps
-
-### Configuration
-
-The UI proxies API requests to the backend. This is configured in `ui/vite.config.ts`:
-
-```typescript
-server: {
-  port: 3101,
-  proxy: {
-    '/api': {
-      target: 'http://localhost:3100',
-      changeOrigin: true,
-      rewrite: (path) => path.replace(/^\/api/, ''),
-    },
-  },
-}
-```
