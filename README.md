@@ -1,6 +1,5 @@
 # Reusable Deposit Address Service Guide
 
-
  This repository serves as a **guide** for building a re-usable deposit addresses service wrapper aroubd One Click API's ANY_INPUT mechanism. This service is to be used as an intro into the architecture to understand the architecture, so that it can be adapted it for your production environment.
 
 ---
@@ -9,35 +8,51 @@
 
 This reference implementation is minimal ny design and only scopes the core design principles. Your service should only need to handle caching and API exposure. Then One Click handles everything else such deposit detection, swap execution, and withdrawal to the final recipient and so on etc
 
-![Architecture Diagram](./docs/architecture-diagram.png)
+Architecture Diagram
 
 ### Core Components
 
 The project is organized into focused services, each with a single responsibility:
 
-| Service | File | Responsibility |
-| --- | --- | --- |
-| REST API | `src/address/address.controller.ts` | Exposes endpoints for creating addresses and querying status |
-| Address Service | `src/address/address.service.ts` | Implements caching logic, chain normalization, idempotency |
-| One Click Client | `src/one-click/one-click.service.ts` | HTTP client for One Click Quote and Status APIs |
-| Database Entity | `src/address/address.entity.ts` | TypeORM entity defining the address cache schema |
+
+| Service          | File                                 | Responsibility                                               |
+| ---------------- | ------------------------------------ | ------------------------------------------------------------ |
+| REST API         | `src/address/address.controller.ts`  | Exposes endpoints for creating addresses and querying status |
+| Address Service  | `src/address/address.service.ts`     | Implements caching logic, chain normalization, idempotency   |
+| One Click Client | `src/one-click/one-click.service.ts` | HTTP client for One Click Quote and Status APIs              |
+| Database Entity  | `src/address/address.entity.ts`      | TypeORM entity defining the address cache schema             |
+
 
 ### How to Think About Each Layer
 
-**Your Application** should call th re-usable address service when a user needs a deposit address. For example, this could be a frontend requesting an address to display, or a backend provisioning addresses for new users.
+**The RDA consumer Application** should call th re-usable address service when a user needs a deposit address. For example, this could be a frontend requesting an address to display, or a backend provisioning addresses for new users.
 
 **The Re-usable Address Service** itself is just simply the the caching and idempotency layer. Its only job is to ensure the same inputs always return the same address. It should do  this by:
+
 - Checking your database for an existing address matching the request parameters
 - On cache miss, call the One Click API to create a new ANY_INPUT quote
 - Store the returned address in your database
 - Returning the address (cached or new) to your application
- 
+
 **The One Click Infrastructure** handles everything after the address is created:
+
 - Monitors all supported chains for incoming deposits (via POA Bridge)
 - Detects when funds arrive at the deposit address
 - Creates child quotes to swap deposited tokens to the destination asset
 - Executes swaps via the solver network
 - Withdraws funds to the recipient on the destination chain
+
+### Request entrypoint in code
+
+This is the exact API entrypoint that partners integrate with. It delegates immediately to the caching service.
+
+```typescript
+@Post('address')
+@HttpCode(HttpStatus.OK)
+async createOrGetAddress(@Body() dto: CreateAddressDto) {
+  return this.addressService.getOrCreateAddress(dto);
+}
+```
 
 ### This Service as a Foundation
 
@@ -57,9 +72,9 @@ Howeevr the core logic for the likes of caching, the One-Click call and the stor
 
 The Address Service (`src/address/address.service.ts`) manages the core caching logic. The flow is straightforward: check the cache first, call One Click only on miss.
 
-![Address Creation Flow](./docs/address-creation-flow.png)
+Address Creation Flow
 
-In this tes example each address request contains the following parameters Butg note that the parameters choosen can be up to personal preferecne as long as gthey yeild a deterministic output. For example in this service chain to chain routes are determinisitc not every unique asset:
+In this test example each address request contains the following parameters Butg note that the parameters choosen can be up to personal preferecne as long as gthey yeild a deterministic output. For example in this service chain to chain routes are determinisitc not every unique asset:
 
 ```typescript
 interface CreateAddressRequest {
@@ -79,6 +94,31 @@ The re usable address service handles each incoming request by:
 2. **Checking the cache** — looks up existing address by unique key
 3. **Calling One Click** — on cache miss, creates an ANY_INPUT quote
 4. **Storing the result** — saves the address with a unique constraint for idempotency
+
+The core idempotency logic is implemented in `AddressService`. This is the key flow (cache lookup -> quote on miss -> race-safe fallback):
+
+```typescript
+const whereClause = {
+  userId: request.userId,
+  depositChain: normalizedDepositChain,
+  destinationAsset: request.destinationAsset,
+};
+
+const existing = await this.repo.findOne({ where: whereClause });
+if (existing) return this.toResponse(existing, true);
+
+try {
+  const quote = await this.oneClickService.createAnyInputQuote({ ... });
+  const entity = await this.saveAddress(request, quote, normalizedDepositChain);
+  return this.toResponse(entity, false);
+} catch (error) {
+  if (this.isUniqueViolation(error)) {
+    const racedEntity = await this.repo.findOne({ where: whereClause });
+    if (racedEntity) return this.toResponse(racedEntity, true);
+  }
+  throw error;
+}
+```
 
 ---
 
@@ -106,6 +146,19 @@ The unique constraint in the database uses the normalized chain:
 ```
 
 This guarantees idempotency in the sense that the same inputs always return the same address.
+
+Once the quote is returned, the service picks a deposit address deterministically for the normalized chain:
+
+```typescript
+if (normalizedDepositChain === 'near') {
+  return quote.accountId;
+}
+if (normalizedDepositChain === 'evm') {
+  return chainDepositAddresses.eth ?? chainDepositAddresses.arb ?? chainDepositAddresses.base ?? quote.quote.depositAddress;
+}
+
+return chainDepositAddresses[requestedDepositChain.toLowerCase()] ?? quote.quote.depositAddress;
+```
 
 ---
 
@@ -138,6 +191,16 @@ async createAnyInputQuote(request: CreateAnyInputQuoteRequest): Promise<OneClick
 }
 ```
 
+Before sending payloads, EVM-style addresses are normalized to lowercase so upstream validation is stable:
+
+```typescript
+const normalizedRecipient = normalizeAddress(request.recipient);
+const normalizedRefundTo = normalizeAddress(request.refundTo ?? request.recipient);
+
+recipient: normalizedRecipient,
+refundTo: normalizedRefundTo,
+```
+
 The response includes deposit addresses for all supported chains:
 
 ```typescript
@@ -158,15 +221,25 @@ interface OneClickQuoteResponse {
 }
 ```
 
+Error passthrough is intentional: One Click validation errors are returned directly with status so integrators can debug quickly.
+
+```typescript
+} catch (error) {
+  const message = getErrorMessage(error);
+  const status = getErrorStatus(error) ?? 502;
+  throw new HttpException(`One Click API error: ${message}`, status);
+}
+```
+
 > **Note:** One Click generates a unique address for every request (the derivation includes timestamps). This is why caching is required so you cannot fully rely on One Click to return the same address for identical inputs.
 
 ---
 
 ## Deposit processing
 
-Once an address exists, then thats pretty much it and your service's job is pretty uch done. One Click handles the entire deposit lifecycle automatically — your service is not involved in any of these steps.
+Once an address exists, then thats pretty much it and your service's job is pretty uch done. One Click handles the entire deposit lifecycle automatically and  nothing else is involved in any of these steps.
 
-![Deposit Processing Flow](./docs/deposit-processing-flow.png)
+Deposit Processing Flow
 
 The processing happens in six stages:
 
@@ -187,7 +260,7 @@ While deposit processing is automatic, you'll want to show users the status of t
 
 The controller (`src/address/address.controller.ts`) provides a unified status endpoint that merges both sources into a single response.
 
-![Status Tracking Diagram](./docs/status-tracking-diagram.png)
+Status Tracking Diagram
 
 ```typescript
 @Get('address/:id/unified-status')
@@ -222,12 +295,27 @@ interface UnifiedDeposit {
 }
 ```
 
-| Status | Meaning |
-| --- | --- |
-| `DETECTED` | Deposit seen on chain, waiting for bridge |
-| `PROCESSING` | Bridged to NEAR, swap in progress |
-| `SUCCESS` | Completed, funds sent to recipient |
-| `FAILED` | Failed (will auto-retry on next cron tick) |
+This endpoint builds a unified view by querying bridge deposits and withdrawals concurrently, then merging:
+
+```typescript
+const [bridgeResult, withdrawalsResult] = await Promise.allSettled([
+  this.oneClickService.getRecentDeposits(address.accountId, { depositChain: address.depositChain }),
+  this.oneClickService.getWithdrawals(address.accountId),
+]);
+
+const bridgeRes = bridgeResult.status === 'fulfilled' ? bridgeResult.value : { deposits: [] };
+const withdrawalsRes = withdrawalsResult.status === 'fulfilled' ? withdrawalsResult.value : { withdrawals: [] };
+const deposits = this.mergeDeposits(bridgeRes.deposits, withdrawalsRes.withdrawals);
+```
+
+
+| Status       | Meaning                                    |
+| ------------ | ------------------------------------------ |
+| `DETECTED`   | Deposit seen on chain, waiting for bridge  |
+| `PROCESSING` | Bridged to NEAR, swap in progress          |
+| `SUCCESS`    | Completed, funds sent to recipient         |
+| `FAILED`     | Failed (will auto-retry on next cron tick) |
+
 
 ---
 
@@ -247,7 +335,6 @@ Content-Type: application/json
   "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD12"
 }
 ```
-
 
 The `alreadyExists` field indicates whether this was a cache hit (`true`) or a new address (`false`).
 
@@ -464,6 +551,7 @@ pnpm ui
 ```
 
 This starts:
+
 - API on `http://localhost:3100`
 - UI on `http://localhost:3101`
 
