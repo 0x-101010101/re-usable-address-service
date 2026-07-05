@@ -8,7 +8,7 @@
 
 This reference implementation is minimal ny design and only scopes the core design principles. Your service should only need to handle caching and API exposure. Then One Click handles everything else such deposit detection, swap execution, and withdrawal to the final recipient and so on etc
 
-Architecture Diagram
+![Architecture Diagram](./docs/architecture-diagram.png)
 
 ### Core Components
 
@@ -72,7 +72,7 @@ Howeevr the core logic for the likes of caching, the One-Click call and the stor
 
 The Address Service (`src/address/address.service.ts`) manages the core caching logic. The flow is straightforward: check the cache first, call One Click only on miss.
 
-Address Creation Flow
+![Address Creation Flow](./docs/address-creation-flow.png)
 
 In this test example each address request contains the following parameters Butg note that the parameters choosen can be up to personal preferecne as long as gthey yeild a deterministic output. For example in this service chain to chain routes are determinisitc not every unique asset:
 
@@ -239,7 +239,7 @@ Error passthrough is intentional: One Click validation errors are returned direc
 
 Once an address exists, then thats pretty much it and your service's job is pretty uch done. One Click handles the entire deposit lifecycle automatically and  nothing else is involved in any of these steps.
 
-Deposit Processing Flow
+![Deposit Processing Flow](./docs/deposit-processing-flow.png)
 
 The processing happens in six stages:
 
@@ -260,7 +260,7 @@ While deposit processing is automatic, you'll want to show users the status of t
 
 The controller (`src/address/address.controller.ts`) provides a unified status endpoint that merges both sources into a single response.
 
-Status Tracking Diagram
+![Status Tracking Diagram](./docs/status-tracking-diagram.png)
 
 ```typescript
 @Get('address/:id/unified-status')
