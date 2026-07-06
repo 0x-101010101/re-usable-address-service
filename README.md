@@ -10,6 +10,8 @@ This reference implementation is minimal ny design and only scopes the core desi
 
 Architecture Diagram
 
+![Architecture Diagram](./docs/architecture-diagram.png)
+
 ### Core Components
 
 The project is organized into focused services, each with a single responsibility:
@@ -59,6 +61,8 @@ async createOrGetAddress(@Body() dto: CreateAddressDto) {
 The Address Service (`src/address/address.service.ts`) manages the core caching logic. The flow is straightforward: check the cache first, call One Click only on miss.
 
 Address Creation Flow
+
+![Address Creation Flow](./docs/address-creation-flow.png)
 
 In this test example each address request contains the following parameters below. But note that the parameters choosen can be arbitrary as long as they yeild a unique but deterministic output.
 
@@ -219,6 +223,8 @@ Once an address exists, then thats pretty much it and your service's job is pret
 
 Deposit Processing Flow
 
+![Deposit Processing Flow](./docs/deposit-processing-flow.png)
+
 The processing happens in six stages:
 
 1. **User deposits** — sends funds to the deposit address on any supported chain
@@ -239,6 +245,8 @@ While deposit processing is automatic, you'll want to show users the status of t
 The controller (`src/address/address.controller.ts`) provides a unified status endpoint that merges both sources into a single response. This is the main trick of the integration to get right as 1clcik does not natively support a single endpoint at the moment for getting unified reusable deposit quote statues out of the box. This will be up to you to design as you see fit
 
 Status Tracking Diagram
+
+![Status Tracking Diagram](./docs/status-tracking-diagram.png)
 
 ```typescript
 @Get('address/:id/unified-status')
