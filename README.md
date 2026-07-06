@@ -1,6 +1,6 @@
 # Reusable Deposit Address Service Guide
 
- This repository serves as a **guide** for building a re-usable deposit addresses service wrapper aroubd One Click API's ANY_INPUT mechanism. This service is to be used as an intro into the architecture to understand the architecture, so that it can be adapted it for your production environment.
+ This repository serves as a **guide** for building a re-usable deposit addresses service wrapper around One Click API's ANY_INPUT mechanism. This service is to be used as an intro into the architecture, so that it can be adapted it for your production environment.
 
 ---
 
@@ -8,7 +8,7 @@
 
 This reference implementation is minimal ny design and only scopes the core design principles. Your service should only need to handle caching and API exposure. Then One Click handles everything else such deposit detection, swap execution, and withdrawal to the final recipient and so on etc
 
-![Architecture Diagram](./docs/architecture-diagram.png)
+Architecture Diagram
 
 ### Core Components
 
@@ -42,9 +42,7 @@ The project is organized into focused services, each with a single responsibilit
 - Executes swaps via the solver network
 - Withdraws funds to the recipient on the destination chain
 
-### Request entrypoint in code
-
-This is the exact API entrypoint that partners integrate with. It delegates immediately to the caching service.
+In this example, the sniuppet below shows the exact API entrypoint that partners integrate with. It delegates immediately to the caching service.
 
 ```typescript
 @Post('address')
@@ -54,27 +52,15 @@ async createOrGetAddress(@Body() dto: CreateAddressDto) {
 }
 ```
 
-### This Service as a Foundation
-
-This reference implementation uses SQLite and NestJS for simplicity. For production, you should:
-
-- Replace SQLite with PostgreSQL or your preferred database
-- Add authentication and rate limiting to protect your endpoints (only applies if you choose not to make interal service)
-- Integrate with your existing user management system
-- Add monitoring, logging, and alerting
-- Consider a distributed lock (Redis) for high-concurrency scenarios
-
-Howeevr the core logic for the likes of caching, the One-Click call and the storeing of the address result — remains the same regardless of your tech stack.
-
 ---
 
 ## Address creation
 
 The Address Service (`src/address/address.service.ts`) manages the core caching logic. The flow is straightforward: check the cache first, call One Click only on miss.
 
-![Address Creation Flow](./docs/address-creation-flow.png)
+Address Creation Flow
 
-In this test example each address request contains the following parameters Butg note that the parameters choosen can be up to personal preferecne as long as gthey yeild a deterministic output. For example in this service chain to chain routes are determinisitc not every unique asset:
+In this test example each address request contains the following parameters below. But note that the parameters choosen can be arbitrary as long as they yeild a unique but deterministic output.
 
 ```typescript
 interface CreateAddressRequest {
@@ -133,6 +119,9 @@ const EVM_CHAIN_ALIASES = new Set([
   'avax', 'avalanche', 'gnosis'
 ]);
 
+// its is not nessecary to normalise like this for EVM chains if your desired output if
+// ETH => ARB strictly. But as extra resiliance we decide to support EVM => ARB so that if a user  
+// makes a mistake the swap will still happen. This only an EVM tactic since all evm chains will have // the same deposit address
 private normalizeDepositChain(rawDepositChain: string) {
   const normalized = rawDepositChain.trim().toLowerCase();
   return EVM_CHAIN_ALIASES.has(normalized) ? 'evm' : normalized;
@@ -150,13 +139,12 @@ This guarantees idempotency in the sense that the same inputs always return the 
 Once the quote is returned, the service picks a deposit address deterministically for the normalized chain:
 
 ```typescript
+// on near deposit chain the deposit address is the quote accountid
 if (normalizedDepositChain === 'near') {
   return quote.accountId;
 }
-if (normalizedDepositChain === 'evm') {
-  return chainDepositAddresses.eth ?? chainDepositAddresses.arb ?? chainDepositAddresses.base ?? quote.quote.depositAddress;
-}
-
+// else we use the chainDeposit address returned for the 1click ANY_INPUT quote at key of the chain we 
+// are targeting. else fallback to quote.quote.depositAddress is a fallback and can be a generic base // account-style address.
 return chainDepositAddresses[requestedDepositChain.toLowerCase()] ?? quote.quote.depositAddress;
 ```
 
@@ -164,7 +152,7 @@ return chainDepositAddresses[requestedDepositChain.toLowerCase()] ?? quote.quote
 
 ## Calling One Click
 
-When the cache misses, the One Click Service (`src/one-click/one-click.service.ts`) creates an ANY_INPUT quote. This quote type accepts any token at any amount, with a far-future deadline.
+When the cache misses, the One Click Service (`src/one-click/one-click.service.ts`) creates an ANY_INPUT quote. This quote type accepts any token at any amount.
 
 ```typescript
 async createAnyInputQuote(request: CreateAnyInputQuoteRequest): Promise<OneClickQuoteResponse> {
@@ -221,16 +209,6 @@ interface OneClickQuoteResponse {
 }
 ```
 
-Error passthrough is intentional: One Click validation errors are returned directly with status so integrators can debug quickly.
-
-```typescript
-} catch (error) {
-  const message = getErrorMessage(error);
-  const status = getErrorStatus(error) ?? 502;
-  throw new HttpException(`One Click API error: ${message}`, status);
-}
-```
-
 > **Note:** One Click generates a unique address for every request (the derivation includes timestamps). This is why caching is required so you cannot fully rely on One Click to return the same address for identical inputs.
 
 ---
@@ -239,28 +217,28 @@ Error passthrough is intentional: One Click validation errors are returned direc
 
 Once an address exists, then thats pretty much it and your service's job is pretty uch done. One Click handles the entire deposit lifecycle automatically and  nothing else is involved in any of these steps.
 
-![Deposit Processing Flow](./docs/deposit-processing-flow.png)
+Deposit Processing Flow
 
 The processing happens in six stages:
 
 1. **User deposits** — sends funds to the deposit address on any supported chain
 2. **Bridge detects** — POA Bridge monitors all chains for incoming transfers
 3. **Bridge to NEAR** — funds are bridged and credited to the NEAR account
-4. **Cron creates child quote** — every 10 seconds, One Click checks for new balances
+4. **child quote** created— 1Click creates and checks child quotes for new balances to process them
 5. **Swap executes** — a child EXACT_INPUT quote swaps to the destination asset
 6. **Withdrawal** — funds are bridged to the recipient on the destination chain
 
-The 10-second cron interval means deposits typically process within 1-5 minutes, depending on the source chain's confirmation time.
+Deposits typically process within 1-5 minutes, depending on the source chain's confirmation time. For BTC it will be slower given the 10 minute confirmation tme. So for BTC a deposit would take 10 mins to get confirmed + 2/3 mins for 1clcik flow
 
 ---
 
 ## Status tracking
 
-While deposit processing is automatic, you'll want to show users the status of their deposits. The challenge is that status information is split across two APIs — the POA Bridge knows about detected deposits, and the Withdrawals API knows about completed swaps.
+While deposit processing is automatic, you'll want to show users the status of their deposits. The challenge is that status information is split across two APIs. The POA Bridge knows about detected deposits, and the 1click API's withdrawals endpoint knows about pending & completed swaps.
 
-The controller (`src/address/address.controller.ts`) provides a unified status endpoint that merges both sources into a single response.
+The controller (`src/address/address.controller.ts`) provides a unified status endpoint that merges both sources into a single response. This is the main trick of the integration to get right as 1clcik does not natively support a single endpoint at the moment for getting unified reusable deposit quote statues out of the box. This will be up to you to design as you see fit
 
-![Status Tracking Diagram](./docs/status-tracking-diagram.png)
+Status Tracking Diagram
 
 ```typescript
 @Get('address/:id/unified-status')
@@ -318,6 +296,23 @@ const deposits = this.mergeDeposits(bridgeRes.deposits, withdrawalsRes.withdrawa
 
 
 ---
+
+## Production considerations
+
+The reference implementation uses SQLite for simplicity. For production:
+
+- **Replace SQLite** with PostgreSQL for better concurrency
+- **Add authentication** to your API endpoints
+- **Add rate limiting** to prevent abuse
+- **Monitor cache hit rate** — should be >90% for reusable addresses
+- **Set up alerting** for stuck deposits or API errors
+- **Run a chain indexer** for watched deposit addresses so you can show "pending detection" before One Click/bridge polling picks up deposits
+- **Consider a deterministic request hash key** — for larger scale, hashing normalized route params (e.g. `userId + depositChain + destinationAsset + recipient`) into a single indexed key can make cache mapping stricter and easier to audit across services
+- invest time into robust status tracking maybe ending confirmation indexing for BTC
+
+For BTC routes specifically, status may remain empty until the deposit has at least one BTC confirmation and is detected by the bridge flow.
+
+The unique constraint handles concurrent requests for the same address but For high-traffic scenarios, consider adding a distributed lock (Redis) before the One Click call.
 
 ## API Reference
 
@@ -385,24 +380,6 @@ curl -X POST http://localhost:3100/address \
 
 ---
 
-## Production considerations
-
-The reference implementation uses SQLite for simplicity. For production:
-
-- **Replace SQLite** with PostgreSQL for better concurrency
-- **Add authentication** to your API endpoints
-- **Add rate limiting** to prevent abuse
-- **Monitor cache hit rate** — should be >90% for reusable addresses
-- **Set up alerting** for stuck deposits or API errors
-- **Run a chain indexer** for watched deposit addresses so you can show "pending detection" before One Click/bridge polling picks up deposits
-- **Consider a deterministic request hash key** — for larger scale, hashing normalized route params (e.g. `userId + depositChain + destinationAsset + recipient`) into a single indexed key can make cache mapping stricter and easier to audit across services
-
-For BTC routes specifically, status may remain empty until the deposit has at least one BTC confirmation and is detected by the bridge flow.
-
-The unique constraint handles concurrent requests for the same address but For high-traffic scenarios, consider adding a distributed lock (Redis) before the One Click call.
-
----
-
 ## Testing the Full Flow
 
 Once the service is running, follow these steps to test the complete deposit lifecycle.
@@ -447,27 +424,24 @@ Response:
 }
 ```
 
-Note the `depositAddress` — this is what you show to the user. Since we requested `eth`, this is an EVM address and can be used from Ethereum or other EVM chains.
-The returned `depositChain` is `evm` because the service normalizes all EVM inputs (`eth`, `arb`, `base`, etc.) to a shared cache key.
+Note the `depositAddress`as this is what you show to the user. Since we requested `eth`, this is an EVM address and can be used from Ethereum or other EVM chains. The returned `depositChain` is `evm` because the service normalizes all EVM inputs `eth`, `arb`, `base` etc to a shared cache key. This is only done to prevent users form doing incorrect chain deposits but is not mandatory or required.
 
 ### Step 2: Make a deposit
 
 Send funds to the deposit address on an EVM network:
 
-1. Open your wallet (MetaMask, Rabby, etc.)
+1. Open your wallet (MetaMask, etc.)
 2. Send ETH, USDC, or another supported token to the `depositAddress`
 3. Use Ethereum mainnet (or another supported EVM chain)
 
-For testing, use a small amount of ETH on Base for lower gas costs.
-
-> **Note:** After sending, the deposit will be detected by the POA Bridge within a few minutes (depending on block confirmations). One Click will automatically swap to USDC and send to your recipient address.
+For testing, use a small amount of ETH on Base for lower gas costs. After sending, the deposit will be detected by the POA Bridge within a few seconds to minutes. One Click will automatically swap to USDC and send to your recipient address.
 
 ### Step 3: Poll the unified status
 
 Check the status of deposits for your address:
 
 ```bash
-curl http://localhost:3100/address/1/unified-status
+curl http://localhost:3100/address/<ID>/unified-status
 ```
 
 Response while processing:
@@ -483,7 +457,7 @@ Response while processing:
   },
   "deposits": [
     {
-      "status": "PROCESSING",
+      "status": "PROCESSING", // DETECTED | PROCESSING | SUCCESS
       "depositTxHash": "0xabc123...",
       "chain": "eth",
       "amountIn": "100000000000000000",
@@ -495,35 +469,6 @@ Response while processing:
     "detected": 0,
     "processing": 1,
     "success": 0,
-    "failed": 0,
-    "total": 1
-  }
-}
-```
-
-Response after completion:
-
-```json
-{
-  "address": { ... },
-  "deposits": [
-    {
-      "status": "SUCCESS",
-      "depositTxHash": "0xabc123...",
-      "withdrawTxHash": "0xdef456...",
-      "chain": "eth",
-      "amountIn": "100000000000000000",
-      "amountInFormatted": "0.1",
-      "amountOut": "250000000",
-      "amountOutUsd": "250.00",
-      "detectedAt": "2026-07-05T15:05:00.000Z",
-      "completedAt": "2026-07-05T15:08:00.000Z"
-    }
-  ],
-  "summary": {
-    "detected": 0,
-    "processing": 0,
-    "success": 1,
     "failed": 0,
     "total": 1
   }
