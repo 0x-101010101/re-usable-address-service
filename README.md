@@ -1,14 +1,14 @@
 # Reusable Deposit Address Service Guide
 
- This repository serves as a **guide** for building a re-usable deposit addresses service wrapper around One Click API's ANY_INPUT mechanism. This service is to be used as an intro into the architecture, so that it can be adapted it for your production environment.
+This repository serves as a **guide** for building a re-usable deposit addresses service wrapper around One Click API's ANY_INPUT mechanism. This service is to be used as an intro into the architecture, so that it can be adapted it for your production environment.
 
 ---
 
-We highly recommend reading rhe full 1click API docuemtnation to get familiar with how the undrlying 1click flow works on a high level before reading any further. There are key concepts gthat are important to understand as a basis. You can check out the 1Click API docs here https://docs.near-intents.org/integration/distribution-channels/1click-api/sdk
+We highly recommend reading the full 1click API docuemtnation to get familiar with how the undrlying 1click flow works on a high level before reading any further. There are key concepts that are important to understand as a basis. You can check out the 1Click API docs here https://docs.near-intents.org/integration/distribution-channels/1click-api/sdk
 
 ## Architecture
 
-This reference implementation is minimal ny design and only scopes the core design principles. Your service should only need to handle caching and API exposure. Then One Click handles everything else such deposit detection, swap execution, and withdrawal to the final recipient and so on etc
+This reference implementation is minimal by design and only scopes the core design principles. Your service should only need to handle caching and API exposure. Then One Click handles everything else such deposit detection, swap execution, and withdrawal to the final recipient and so on etc
 
 Architecture Diagram
 
@@ -29,7 +29,7 @@ The project is organized into focused services, each with a single responsibilit
 
 ### How to Think About Each Layer
 
-**The RDA consumer Application** should call th re-usable address service when a user needs a deposit address. For example, this could be a frontend requesting an address to display, or a backend provisioning addresses for new users.
+**The RDA consumer Application** should call the re-usable address service when a user needs a deposit address. For example, this could be a frontend requesting an address to display, or a backend provisioning addresses for new users.
 
 **The Re-usable Address Service** itself is just simply the the caching and idempotency layer. Its only job is to ensure the same inputs always return the same address. It should do  this by:
 
