@@ -4,6 +4,8 @@
 
 ---
 
+We highly recommend reading rhe full 1click API docuemtnation to get familiar with how the undrlying 1click flow works on a high level before reading any further. There are key concepts gthat are important to understand as a basis. You can check out the 1Click API docs here https://docs.near-intents.org/integration/distribution-channels/1click-api/sdk
+
 ## Architecture
 
 This reference implementation is minimal ny design and only scopes the core design principles. Your service should only need to handle caching and API exposure. Then One Click handles everything else such deposit detection, swap execution, and withdrawal to the final recipient and so on etc
